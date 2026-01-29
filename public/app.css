@@ -1,0 +1,273 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
+  --bg: #0b0b0b;
+  --panel: #111111;
+  --ink: #f5f5f5;
+  --muted: #b4b4b4;
+  --accent: #2f6bff;
+  --border: #2a2a2a;
+  --danger: #ff4d4f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.brand {
+  font-size: 1.6rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.status {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #1b1b1b;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.status.online {
+  background: #0f1e4d;
+  color: #dbe6ff;
+  border-color: #28459b;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: none;
+}
+
+.card + .card {
+  margin-top: 24px;
+}
+
+h1 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 2rem;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 1.4rem;
+}
+
+h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+p {
+  margin: 0 0 16px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0f0f0f;
+  color: var(--ink);
+}
+
+button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(47, 107, 255, 0.25);
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.hidden {
+  display: none;
+}
+
+.hint {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.hint.error {
+  color: var(--danger);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+}
+
+.badge {
+  padding: 4px 8px;
+  background: #1b1b1b;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.video-shell {
+  position: relative;
+  margin: 20px 0;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #000;
+}
+
+video {
+  width: 100%;
+  max-height: 70vh;
+  background: #111;
+}
+
+.video-overlay {
+  display: none;
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.inline-field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.now-row {
+  display: grid;
+  grid-template-columns: auto minmax(200px, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.invite-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.invite-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.controls button {
+  background: #0f0f0f;
+  color: white;
+  border: 1px solid var(--border);
+}
+
+.admin-panel {
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.invite-list {
+  display: grid;
+  gap: 10px;
+  font-size: 0.9rem;
+  margin-top: 12px;
+}
+
+.invite-item {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0f0f0f;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 20px 16px 40px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

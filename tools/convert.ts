@@ -1,0 +1,217 @@
+import { promises as fs } from "fs";
+import path from "path";
+import { createHash } from "crypto";
+
+const VIDEO_DIR = process.env.VIDEO_DIR ?? path.join(process.cwd(), "videos");
+const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
+const SUBTITLE_DIR = path.join(DATA_DIR, "subtitles");
+
+const exts = new Set([".mkv", ".mov", ".webm", ".avi"]);
+
+async function walk(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...(await walk(full)));
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    const ext = path.extname(entry.name).toLowerCase();
+    if (exts.has(ext)) out.push(full);
+  }
+  return out;
+}
+
+async function fileNewer(a: string, b: string) {
+  try {
+    const [sa, sb] = await Promise.all([fs.stat(a), fs.stat(b)]);
+    return sa.mtimeMs >= sb.mtimeMs;
+  } catch {
+    return false;
+  }
+}
+
+async function runFfmpeg(args: string[]) {
+  const proc = Bun.spawn(["ffmpeg", "-y", ...args], {
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  const code = await proc.exited;
+  return code === 0;
+}
+
+function hashPath(input: string) {
+  return createHash("sha1").update(input).digest("hex");
+}
+
+async function extractSubtitles(inputPath: string) {
+  const rel = path.relative(VIDEO_DIR, inputPath);
+  const hash = hashPath(rel);
+  const outDir = path.join(SUBTITLE_DIR, hash);
+  await fs.mkdir(outDir, { recursive: true });
+
+  const probe = Bun.spawn([
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "s",
+    "-show_streams",
+    "-print_format",
+    "json",
+    inputPath,
+  ]);
+  const out = await new Response(probe.stdout).text();
+  const err = await new Response(probe.stderr).text();
+  const code = await probe.exited;
+  if (code !== 0) {
+    console.log(`ffprobe subtitles failed: ${err}`);
+    return;
+  }
+
+  const parsed = JSON.parse(out) as { streams?: Array<any> };
+  const streams = parsed.streams ?? [];
+  if (streams.length === 0) {
+    console.log(`no subtitle streams in ${inputPath}`);
+    return;
+  }
+
+  try {
+    const existing = await fs.readdir(outDir);
+    for (const file of existing) {
+      if (file.endsWith(".vtt")) {
+        await fs.unlink(path.join(outDir, file));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  for (let i = 0; i < streams.length; i += 1) {
+    const stream = streams[i];
+    const globalIndex = stream.index as number;
+    const codec = String(stream.codec_name || "");
+    if (!["subrip", "ass", "ssa", "webvtt"].includes(codec)) {
+      console.log(`skip subtitle stream ${i} (${codec})`);
+      continue;
+    }
+    const lang = stream.tags?.language ?? "und";
+    const outFile = path.join(outDir, `sub_${globalIndex}_${lang}.vtt`);
+    const ok = await runFfmpeg(["-i", inputPath, "-map", `0:${globalIndex}`, outFile]);
+    if (!ok) {
+      console.log(`failed to extract subtitle stream ${i}`);
+    }
+  }
+}
+
+async function sanityCheck(filePath: string) {
+  const probe = Bun.spawn([
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=codec_name,width,height",
+    "-print_format",
+    "json",
+    filePath,
+  ]);
+  const out = await new Response(probe.stdout).text();
+  const code = await probe.exited;
+  if (code !== 0) {
+    console.log(`sanity check failed for ${filePath}`);
+    return;
+  }
+  const parsed = JSON.parse(out) as { streams?: Array<any> };
+  if (!parsed.streams || parsed.streams.length === 0) {
+    console.log(`no video stream found in ${filePath}`);
+  }
+}
+
+async function convertOne(inputPath: string) {
+  const dir = path.dirname(inputPath);
+  const base = path.basename(inputPath, path.extname(inputPath));
+  const outputPath = path.join(dir, `${base}.mp4`);
+
+  if (await fileNewer(outputPath, inputPath)) {
+    console.log(`skip (up-to-date): ${outputPath}`);
+    await sanityCheck(outputPath);
+    await extractSubtitles(inputPath);
+    return;
+  }
+
+  try {
+    await fs.unlink(outputPath);
+  } catch {
+    // ignore
+  }
+
+  console.log(`convert: ${inputPath}`);
+
+  const fastOk = await runFfmpeg([
+    "-i",
+    inputPath,
+    "-map",
+    "0:v:0",
+    "-map",
+    "0:a:0?",
+    "-sn",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-movflags",
+    "+faststart",
+    outputPath,
+  ]);
+
+  if (fastOk) return;
+
+  console.log(`fallback transcode: ${inputPath}`);
+  const ok = await runFfmpeg([
+    "-i",
+    inputPath,
+    "-map",
+    "0:v:0",
+    "-map",
+    "0:a:0?",
+    "-sn",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "23",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-movflags",
+    "+faststart",
+    outputPath,
+  ]);
+
+  if (!ok) {
+    throw new Error(`ffmpeg failed for ${inputPath}`);
+  }
+
+  await sanityCheck(outputPath);
+  await extractSubtitles(inputPath);
+}
+
+await fs.mkdir(SUBTITLE_DIR, { recursive: true });
+
+const files = await walk(VIDEO_DIR);
+if (files.length === 0) {
+  console.log(`no convertible files in ${VIDEO_DIR}`);
+  process.exit(0);
+}
+
+for (const file of files) {
+  await convertOne(file);
+}

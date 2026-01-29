@@ -1,0 +1,8 @@
+(syncplay) {
+  reverse_proxy localhost:3000
+  encode gzip zstd
+}
+
+syncplay.riddhayan.dpdns.org {
+  import syncplay
+}

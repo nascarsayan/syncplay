@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>syncplay</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">syncplay</div>
+        <div class="status" id="statusBadge">offline</div>
+      </header>
+
+      <section class="card" id="loginView">
+        <h1>Sign in</h1>
+        <p class="muted">Enter your email to sign in.</p>
+        <form id="otpRequestForm" class="stack">
+          <label>
+            Email
+            <input type="email" id="emailInput" required placeholder="you@example.com" autocomplete="email" />
+          </label>
+          <button type="submit">Log in</button>
+        </form>
+        <div class="hint" id="otpHint"></div>
+      </section>
+
+      <section class="card hidden" id="inviteView">
+        <h1>Accept invite</h1>
+        <p class="muted">Use your invite to join syncplay.</p>
+        <form id="inviteForm" class="stack">
+          <label>
+            Invite token
+            <input type="text" id="inviteToken" required />
+          </label>
+          <label>
+            Email
+            <input type="email" id="inviteEmail" required placeholder="you@example.com" />
+          </label>
+          <button type="submit">Accept invite</button>
+        </form>
+        <div class="hint" id="inviteHint"></div>
+      </section>
+
+      <section class="card hidden" id="appView">
+        <div class="row">
+          <div>
+            <h1>Watch together</h1>
+            <p class="muted">Room: <span id="roomLabel">main</span></p>
+          </div>
+          <div class="user">
+            <span id="userEmail"></span>
+            <span class="badge" id="adminBadge">admin</span>
+            <button class="ghost" id="logoutButton">Log out</button>
+          </div>
+        </div>
+
+        <div class="video-shell">
+          <video id="videoPlayer" controls></video>
+          <div class="video-overlay" id="videoOverlay">Select a video to start</div>
+        </div>
+
+        <div class="controls">
+          <button id="seekBack">-10s</button>
+          <button id="seekForward">+10s</button>
+          <button id="fullscreenButton">Fullscreen</button>
+          <label class="inline-field">
+            Subtitles
+            <select id="subtitleSelect"></select>
+          </label>
+        </div>
+        <div class="now-row">
+          <span class="muted">Now playing</span>
+          <select id="nowPlayingSelect"></select>
+        </div>
+        <div class="hint" id="videoStatus"></div>
+
+        <div class="admin-panel hidden" id="adminPanel">
+          <div class="invite-section">
+            <div class="invite-header">
+              <h3>Invites</h3>
+              <button class="ghost" id="toggleInvites">Show</button>
+            </div>
+            <div class="invite-body hidden" id="inviteBody">
+              <form id="inviteCreateForm" class="stack">
+                <label>
+                  Email
+                  <div class="input-row">
+                    <input type="email" id="inviteEmailAdmin" placeholder="someone@example.com" />
+                    <button type="submit" id="inviteCreateButton" disabled>Create invite</button>
+                  </div>
+                </label>
+              </form>
+              <div class="hint" id="inviteCreateHint"></div>
+              <div class="invite-list" id="inviteList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js?v=2"></script>
+  </body>
+</html>
