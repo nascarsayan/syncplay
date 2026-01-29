@@ -274,7 +274,7 @@ async function listSubtitleTracks(relativeVideoPath: string) {
         continue;
       }
       if (!entry.isFile()) continue;
-      if (!/\\.(vtt|srt)$/i.test(entry.name)) continue;
+      if (!/\.(vtt|srt)$/i.test(entry.name)) continue;
 
       const rel = path.relative(VIDEO_ROOT, fullPath);
       if (!rel.startsWith(path.relative(VIDEO_ROOT, videoDir) + path.sep)) continue;
