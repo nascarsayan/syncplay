@@ -8,7 +8,8 @@
     "start": "bun index.ts",
     "invite": "bun tools/invite.ts",
     "convert": "bun tools/convert.ts",
-    "subs": "bun tools/subs.ts"
+    "subs": "bun tools/subs.ts",
+    "download": "bash tools/download.sh"
   },
   "dependencies": {},
   "devDependencies": {
