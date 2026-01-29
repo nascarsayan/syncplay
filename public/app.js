@@ -42,6 +42,8 @@ const el = {
   nowPlayingSelect: document.getElementById("nowPlayingSelect"),
   applyVideoButton: document.getElementById("applyVideoButton"),
   videoLoading: document.getElementById("videoLoading"),
+  loadStatus: document.getElementById("loadStatus"),
+  loadStatusText: document.getElementById("loadStatusText"),
   adminPanel: document.getElementById("adminPanel"),
   inviteCreateForm: document.getElementById("inviteCreateForm"),
   inviteEmailAdmin: document.getElementById("inviteEmailAdmin"),
@@ -110,6 +112,7 @@ async function loadSession() {
   await loadInvites();
   updateNowPlayingLabel();
   setControlsEnabled(false);
+  setLoadStatus("Idle");
   connectWebSocket();
   primeRoomState();
 }
@@ -174,6 +177,7 @@ function applyState(data) {
       clearSubtitles();
       setControlsEnabled(false);
       if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+      setLoadStatus("Loading");
       el.videoPlayer.src = `/media/${encodeURIComponent(videoPath)}`;
       el.videoOverlay.classList.add("hidden");
       log("applyState:loadSubtitles", videoPath);
@@ -187,6 +191,7 @@ function applyState(data) {
       el.videoOverlay.classList.remove("hidden");
       setControlsEnabled(false);
       if (el.videoLoading) el.videoLoading.classList.add("hidden");
+      setLoadStatus("Idle");
       clearSubtitles();
     }
     updateNowPlayingLabel();
@@ -359,6 +364,11 @@ function setControlsEnabled(enabled) {
   if (el.subtitleSelect) el.subtitleSelect.disabled = !enabled;
 }
 
+function setLoadStatus(text) {
+  if (!el.loadStatusText) return;
+  el.loadStatusText.textContent = text;
+}
+
 function applyPreferredSubtitle() {
   if (!el.subtitleSelect) return;
   const opts = Array.from(el.subtitleSelect.options);
@@ -428,37 +438,45 @@ el.fullscreenButton.addEventListener("click", () => {
 
 el.videoPlayer.addEventListener("loadedmetadata", () => {
   if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+  setLoadStatus("Buffering");
 });
 
 el.videoPlayer.addEventListener("canplay", () => {
   if (el.videoLoading) el.videoLoading.classList.add("hidden");
+  setLoadStatus("Ready");
   setControlsEnabled(true);
 });
 
 el.videoPlayer.addEventListener("canplaythrough", () => {
   if (el.videoLoading) el.videoLoading.classList.add("hidden");
+  setLoadStatus("Ready");
 });
 
 el.videoPlayer.addEventListener("playing", () => {
   if (el.videoLoading) el.videoLoading.classList.add("hidden");
+  setLoadStatus("Playing");
 });
 
 el.videoPlayer.addEventListener("loadstart", () => {
   if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+  setLoadStatus("Loading");
 });
 
 el.videoPlayer.addEventListener("waiting", () => {
   if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+  setLoadStatus("Buffering");
 });
 
 el.videoPlayer.addEventListener("stalled", () => {
   if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+  setLoadStatus("Stalled");
 });
 
 el.videoPlayer.addEventListener("error", () => {
   if (el.videoLoading) {
     el.videoLoading.classList.remove("hidden");
   }
+  setLoadStatus("Error");
   setControlsEnabled(false);
 });
 
@@ -507,6 +525,7 @@ if (el.applyVideoButton) {
     if (el.videoLoading) {
       el.videoLoading.classList.remove("hidden");
     }
+    setLoadStatus("Loading");
     await fetchJSON("/api/room/set-video", {
       method: "POST",
       body: JSON.stringify({ roomId: state.roomId, videoPath }),
