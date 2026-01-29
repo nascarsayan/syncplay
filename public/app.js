@@ -165,6 +165,7 @@ function applyState(data) {
   if (videoPath !== state.currentVideo) {
     state.currentVideo = videoPath;
     if (videoPath) {
+      clearSubtitles();
       setHint(el.videoStatus, "Loading video...");
       setControlsEnabled(false);
       el.videoPlayer.src = `/media/${encodeURIComponent(videoPath)}`;
@@ -180,13 +181,7 @@ function applyState(data) {
       el.videoOverlay.classList.remove("hidden");
       setHint(el.videoStatus, "No video selected.");
       setControlsEnabled(false);
-      if (el.subtitleSelect) {
-        el.subtitleSelect.innerHTML = "";
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "Off";
-        el.subtitleSelect.appendChild(opt);
-      }
+      clearSubtitles();
     }
     updateNowPlayingLabel();
   }
@@ -332,6 +327,18 @@ function setSubtitleTrack(url) {
   track.src = url;
   track.default = true;
   el.videoPlayer.appendChild(track);
+}
+
+function clearSubtitles() {
+  const existing = el.videoPlayer.querySelector("track");
+  if (existing) existing.remove();
+  if (el.subtitleSelect) {
+    el.subtitleSelect.innerHTML = "";
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "Off";
+    el.subtitleSelect.appendChild(opt);
+  }
 }
 
 function setControlsEnabled(enabled) {
