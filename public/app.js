@@ -63,15 +63,14 @@ function setHint(target, message, isError = false) {
 }
 
 async function fetchJSON(url, options = {}) {
-  log("fetchJSON", url, options.method || "GET");
   const response = await fetch(url, {
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     ...options,
   });
   const data = await response.json().catch(() => ({}));
-  log("fetchJSON:response", url, response.status, data);
   if (!response.ok) {
+    log("fetchJSON:error", url, response.status, data);
     throw new Error(data.error || "Request failed");
   }
   return data;
