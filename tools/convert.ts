@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 const VIDEO_DIR = process.env.VIDEO_DIR ?? path.join(process.cwd(), "videos");
 
-const exts = new Set([".mkv", ".mov", ".webm", ".avi"]);
+const exts = new Set([".mkv", ".mov", ".avi"]);
 
 async function walk(dir: string): Promise<string[]> {
   const out: string[] = [];
@@ -65,7 +65,11 @@ async function sanityCheck(filePath: string) {
 
 async function convertOne(inputPath: string) {
   const dir = path.dirname(inputPath);
-  const base = path.basename(inputPath, path.extname(inputPath));
+  const ext = path.extname(inputPath).toLowerCase();
+  if (ext === ".mp4" || ext === ".webm") {
+    return;
+  }
+  const base = path.basename(inputPath, ext);
   const outputPath = path.join(dir, `${base}.mp4`);
 
   if (await fileNewer(outputPath, inputPath)) {
@@ -101,7 +105,14 @@ async function convertOne(inputPath: string) {
     outputPath,
   ]);
 
-  if (fastOk) return;
+  if (fastOk) {
+    try {
+      await fs.unlink(inputPath);
+    } catch {
+      // ignore delete errors
+    }
+    return;
+  }
 
   console.log(`fallback transcode: ${inputPath}`);
   const ok = await runFfmpeg([
@@ -132,6 +143,11 @@ async function convertOne(inputPath: string) {
   }
 
   await sanityCheck(outputPath);
+  try {
+    await fs.unlink(inputPath);
+  } catch {
+    // ignore delete errors
+  }
 }
 
 const files = await walk(VIDEO_DIR);
