@@ -135,7 +135,7 @@ async function convertOne(inputPath: string, force: boolean) {
     if (channels > 2) {
       console.log(`re-encode audio to stereo: ${outputPath}`);
     } else {
-      console.log(`skip (up-to-date): ${outputPath}`);
+      console.log(`skip (up-to-date): ${outputPath} (use --force to reconvert)`);
       await sanityCheck(outputPath);
       return;
     }
@@ -236,7 +236,7 @@ try {
 
 const files = await walk(targetDir);
 if (files.length === 0) {
-  console.log(`no convertible files in ${VIDEO_DIR}`);
+  console.log(`no convertible files in ${VIDEO_DIR} (use --force to reconvert)`);
   process.exit(0);
 }
 
