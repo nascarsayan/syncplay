@@ -19,11 +19,13 @@ if ! command -v aria2c >/dev/null 2>&1; then
   exit 1
 fi
 
-aria2c -d "$TARGET_DIR" "$URL"
+aria2c --seed-time=0 -d "$TARGET_DIR" "$URL"
 
 if command -v bun >/dev/null 2>&1; then
+  bun run subs -- "$FOLDER_NAME"
   bun run convert -- "$FOLDER_NAME"
 elif [[ -x "$HOME/.bun/bin/bun" ]]; then
+  "$HOME/.bun/bin/bun" run subs -- "$FOLDER_NAME"
   "$HOME/.bun/bin/bun" run convert -- "$FOLDER_NAME"
 else
   echo "bun not found. Skipping conversion."
