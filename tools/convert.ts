@@ -150,7 +150,17 @@ async function convertOne(inputPath: string) {
   }
 }
 
-const files = await walk(VIDEO_DIR);
+const args = process.argv.slice(2).filter((arg) => arg !== "--");
+const targetDir = args[0] ? path.resolve(VIDEO_DIR, args[0]) : VIDEO_DIR;
+
+try {
+  await fs.access(targetDir);
+} catch {
+  console.log(`folder not found: ${targetDir}`);
+  process.exit(1);
+}
+
+const files = await walk(targetDir);
 if (files.length === 0) {
   console.log(`no convertible files in ${VIDEO_DIR}`);
   process.exit(0);

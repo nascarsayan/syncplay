@@ -20,3 +20,11 @@ if ! command -v aria2c >/dev/null 2>&1; then
 fi
 
 aria2c -d "$TARGET_DIR" "$URL"
+
+if command -v bun >/dev/null 2>&1; then
+  bun run convert -- "$FOLDER_NAME"
+elif [[ -x "$HOME/.bun/bin/bun" ]]; then
+  "$HOME/.bun/bin/bun" run convert -- "$FOLDER_NAME"
+else
+  echo "bun not found. Skipping conversion."
+fi
