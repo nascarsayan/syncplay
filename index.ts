@@ -237,8 +237,20 @@ async function listVideoFiles(dir: string) {
 
   await walk(dir);
   const results: string[] = [];
+  const preference = (file: string) => {
+    const lower = file.toLowerCase();
+    if (lower.includes(".h264.")) return 0;
+    if (lower.endsWith(".mp4")) return 1;
+    if (lower.endsWith(".webm")) return 2;
+    return 3;
+  };
   for (const files of byDir.values()) {
-    files.sort();
+    files.sort((a, b) => {
+      const pa = preference(a);
+      const pb = preference(b);
+      if (pa !== pb) return pa - pb;
+      return a.localeCompare(b);
+    });
     results.push(files[0]);
   }
   results.sort();
