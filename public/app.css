@@ -214,6 +214,13 @@ video {
   margin-top: 12px;
 }
 
+.now-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
 .invite-header {
   display: flex;
   justify-content: space-between;
