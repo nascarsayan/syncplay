@@ -1,0 +1,15 @@
+[Unit]
+Description=syncplay bun app
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/syncplay
+EnvironmentFile=/home/ubuntu/syncplay/.env
+ExecStart=/home/ubuntu/.bun/bin/bun /home/ubuntu/syncplay/index.ts
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
