@@ -227,7 +227,7 @@ async function listVideoFiles(dir: string) {
       }
       if (!entry.isFile()) continue;
       const ext = path.extname(entry.name).toLowerCase();
-      if ([".mp4", ".webm", ".mkv", ".mov"].includes(ext)) {
+      if ([".mp4", ".webm"].includes(ext)) {
         const parent = path.dirname(fullPath);
         if (!byDir.has(parent)) byDir.set(parent, []);
         byDir.get(parent)!.push(path.relative(dir, fullPath));
@@ -302,7 +302,7 @@ async function getSubtitleTracks(relativeVideoPath: string) {
 
   const ext = path.extname(relativeVideoPath).toLowerCase();
   const base = relativeVideoPath.slice(0, -ext.length);
-  const candidates = [".mkv", ".mov", ".webm", ".avi"].filter((e) => e !== ext);
+  const candidates = [".mp4", ".webm"].filter((e) => e !== ext);
   for (const cand of candidates) {
     const altRel = `${base}${cand}`;
     const altPath = path.resolve(VIDEO_ROOT, altRel);
