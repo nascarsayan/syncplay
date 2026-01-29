@@ -8,6 +8,7 @@
   --accent: #2f6bff;
   --border: #2a2a2a;
   --danger: #ff4d4f;
+  --control-height: 42px;
 }
 
 * {
@@ -233,6 +234,18 @@ video {
   flex-wrap: wrap;
 }
 
+.controls button,
+.controls select {
+  height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.controls label select {
+  height: var(--control-height);
+}
+
 .inline-field {
   display: flex;
   align-items: center;
@@ -243,17 +256,20 @@ video {
 .now-select {
   width: 100%;
   max-width: 520px;
+  flex: 1;
 }
 
 .now-block {
-  display: grid;
+  display: flex;
   gap: 8px;
+  align-items: center;
   width: 100%;
   max-width: 520px;
 }
 
 .now-apply {
-  width: fit-content;
+  width: var(--control-height);
+  padding: 0;
 }
 
 .invite-header {

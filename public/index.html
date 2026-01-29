@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>syncplay</title>
-    <link rel="stylesheet" href="/app.css" />
+    <link rel="stylesheet" href="/app.css?v=2" />
   </head>
   <body>
     <main class="shell">
@@ -54,9 +54,6 @@
         <div class="video-shell">
           <video id="videoPlayer" controls></video>
           <div class="video-overlay" id="videoOverlay">Select a video to start</div>
-          <div class="video-loading hidden" id="videoLoading" aria-live="polite">
-            <span class="iconify spin" data-icon="mdi:loading"></span>
-          </div>
         </div>
 
         <div class="controls">
@@ -76,8 +73,12 @@
           <div class="now-block">
             <select id="nowPlayingSelect" class="now-select"></select>
             <button id="applyVideoButton" class="ghost now-apply" aria-label="Apply video" disabled>
-              <span class="iconify" data-icon="mdi:check"></span>
+              <span class="iconify" data-icon="mdi:play"></span>
             </button>
+          </div>
+          <div class="load-status" id="loadStatus">
+            <span class="iconify" data-icon="mdi:progress-clock"></span>
+            <span id="loadStatusText">Idle</span>
           </div>
         </div>
 
