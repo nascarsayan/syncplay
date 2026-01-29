@@ -254,6 +254,10 @@ async function loadInvites() {
 async function loadSubtitles(videoPath) {
   if (!el.subtitleSelect) return;
   if (state.subtitleLoading) return;
+  if (state.subtitleLastVideo === videoPath && Date.now() - state.subtitleLastLoadedAt < 30000) {
+    log("loadSubtitles:skip_recent", videoPath);
+    return;
+  }
   state.subtitleLoading = true;
   const previousValue = el.subtitleSelect.value;
   log("loadSubtitles:start", videoPath, "previous", previousValue);
@@ -284,14 +288,6 @@ async function loadSubtitles(videoPath) {
         el.subtitleSelect.value = previousValue;
         setSubtitleTrack(previousValue);
       }
-    }
-    if (el.subtitleSelect.options.length === 1) {
-      // Retry once if subtitles were not ready.
-      setTimeout(() => {
-        loadSubtitles(videoPath).then(() => {
-          applyPreferredSubtitle();
-        });
-      }, 800);
     }
   } catch (error) {
     log("loadSubtitles:error", error?.message || error);
