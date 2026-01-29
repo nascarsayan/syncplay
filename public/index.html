@@ -10,7 +10,14 @@
     <main class="shell">
       <header class="topbar">
         <div class="brand">syncplay</div>
-        <div class="status" id="statusBadge">offline</div>
+        <div class="top-right">
+          <div class="status" id="statusBadge">offline</div>
+          <div class="user hidden" id="topUser">
+            <span id="userEmail"></span>
+            <span class="badge" id="adminBadge">admin</span>
+            <button class="ghost" id="logoutButton">Log out</button>
+          </div>
+        </div>
       </header>
 
       <section class="card" id="loginView">
@@ -44,17 +51,7 @@
       </section>
 
       <section class="card hidden" id="appView">
-        <div class="row">
-          <div>
-            <h1>Watch together</h1>
-            <p class="muted">Room: <span id="roomLabel">main</span></p>
-          </div>
-          <div class="user">
-            <span id="userEmail"></span>
-            <span class="badge" id="adminBadge">admin</span>
-            <button class="ghost" id="logoutButton">Log out</button>
-          </div>
-        </div>
+        <div class="row"></div>
 
         <div class="video-shell">
           <video id="videoPlayer" controls></video>

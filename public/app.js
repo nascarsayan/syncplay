@@ -22,6 +22,7 @@ const el = {
   loginView: document.getElementById("loginView"),
   inviteView: document.getElementById("inviteView"),
   appView: document.getElementById("appView"),
+  topUser: document.getElementById("topUser"),
   otpRequestForm: document.getElementById("otpRequestForm"),
   emailInput: document.getElementById("emailInput"),
   otpHint: document.getElementById("otpHint"),
@@ -29,7 +30,6 @@ const el = {
   inviteToken: document.getElementById("inviteToken"),
   inviteEmail: document.getElementById("inviteEmail"),
   inviteHint: document.getElementById("inviteHint"),
-  roomLabel: document.getElementById("roomLabel"),
   userEmail: document.getElementById("userEmail"),
   adminBadge: document.getElementById("adminBadge"),
   logoutButton: document.getElementById("logoutButton"),
@@ -92,6 +92,7 @@ async function loadSession() {
     log("loadSession:logged_out");
     show(el.loginView);
     el.adminBadge.classList.add("hidden");
+    if (el.topUser) el.topUser.classList.add("hidden");
     return;
   }
   log("loadSession:logged_in", state.user.email, "admin", state.user.isAdmin);
@@ -99,11 +100,11 @@ async function loadSession() {
   el.userEmail.textContent = state.user.email;
   el.adminBadge.classList.toggle("hidden", !state.user.isAdmin);
   el.adminPanel.classList.toggle("hidden", !state.user.isAdmin);
+  if (el.topUser) el.topUser.classList.remove("hidden");
   if (el.applyVideoButton) {
     el.applyVideoButton.classList.toggle("hidden", !state.user.isAdmin);
     el.applyVideoButton.disabled = true;
   }
-  el.roomLabel.textContent = state.roomId;
   await loadVideos();
   await loadInvites();
   updateNowPlayingLabel();
@@ -406,6 +407,7 @@ el.logoutButton.addEventListener("click", async () => {
   state.user = null;
   show(el.loginView);
   syncStatus(false);
+  if (el.topUser) el.topUser.classList.add("hidden");
 });
 
 el.seekBack.addEventListener("click", () => {
