@@ -96,17 +96,6 @@ async function loadSession() {
   await loadVideos();
   await loadInvites();
   updateNowPlayingLabel();
-  try {
-    const room = await fetchJSON(`/api/room/state?room=${encodeURIComponent(state.roomId)}`);
-    if (room?.videoPath) {
-      log("loadSession:room_state", room);
-      loadSubtitles(room.videoPath).then(() => {
-        applyPreferredSubtitle();
-      });
-    }
-  } catch {
-    // ignore
-  }
   connectWebSocket();
   primeRoomState();
 }
@@ -220,18 +209,6 @@ function updateNowPlayingLabel() {
   }
 }
 
-function ensureSubtitlesLoaded() {
-  if (!state.currentVideo) return;
-  if (!el.subtitleSelect) return;
-  if (state.subtitleLoading) return;
-  if (state.subtitleLastVideo === state.currentVideo && Date.now() - state.subtitleLastLoadedAt < 4000) {
-    if (el.subtitleSelect.options.length > 1 && el.subtitleSelect.value) return;
-  }
-  loadSubtitles(state.currentVideo).then(() => {
-    applyPreferredSubtitle();
-  });
-}
-
 async function primeRoomState() {
   try {
     const data = await fetchJSON(`/api/room/state?room=${encodeURIComponent(state.roomId)}`);
@@ -245,8 +222,6 @@ async function primeRoomState() {
     // ignore
   }
 }
-
-setInterval(ensureSubtitlesLoaded, 2000);
 
 async function loadVideos() {
   if (!state.user?.isAdmin) return;
