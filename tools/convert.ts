@@ -83,7 +83,7 @@ async function getAudioChannels(filePath: string) {
   return parsed.streams?.[0]?.channels ?? 0;
 }
 
-async function convertOne(inputPath: string) {
+async function convertOne(inputPath: string, force: boolean) {
   const dir = path.dirname(inputPath);
   const ext = path.extname(inputPath).toLowerCase();
   if (ext === ".mp4" || ext === ".webm") {
@@ -92,7 +92,7 @@ async function convertOne(inputPath: string) {
   const base = path.basename(inputPath, ext);
   const outputPath = path.join(dir, `${base}.mp4`);
 
-  if (await fileNewer(outputPath, inputPath)) {
+  if (!force && (await fileNewer(outputPath, inputPath))) {
     const channels = await getAudioChannels(outputPath);
     if (channels > 2) {
       console.log(`re-encode audio to stereo: ${outputPath}`);
@@ -179,7 +179,9 @@ async function convertOne(inputPath: string) {
   }
 }
 
-const args = process.argv.slice(2).filter((arg) => arg !== "--");
+const rawArgs = process.argv.slice(2);
+const force = rawArgs.includes("--force");
+const args = rawArgs.filter((arg) => arg !== "--" && arg !== "--force");
 const targetDir = args[0] ? path.resolve(VIDEO_DIR, args[0]) : VIDEO_DIR;
 
 try {
@@ -196,5 +198,5 @@ if (files.length === 0) {
 }
 
 for (const file of files) {
-  await convertOne(file);
+  await convertOne(file, force);
 }
