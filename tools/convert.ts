@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 const VIDEO_DIR = process.env.VIDEO_DIR ?? path.join(process.cwd(), "videos");
 
-const baseExts = new Set([".mkv", ".mov", ".avi"]);
+const baseExts = new Set([".mkv", ".mov", ".avi", ".mp4"]);
 
 async function walk(dir: string, exts: Set<string>): Promise<string[]> {
   const out: string[] = [];
@@ -133,9 +133,7 @@ async function convertOne(inputPath: string, force: boolean) {
   } else {
     const info = await getVideoInfo(inputPath);
     if (info) {
-      mustTranscodeVideo = force || info.codec !== "h264" || /10/.test(info.pixFmt);
-    } else {
-      mustTranscodeVideo = force;
+      mustTranscodeVideo = info.codec !== "h264" || /10/.test(info.pixFmt);
     }
   }
 
@@ -241,7 +239,6 @@ const shouldDelete = rawArgs.includes("--delete");
 const args = rawArgs.filter((arg) => arg !== "--" && arg !== "--force" && arg !== "--delete");
 const targetDir = args[0] ? path.resolve(VIDEO_DIR, args[0]) : VIDEO_DIR;
 const exts = new Set(baseExts);
-if (force) exts.add(".mp4");
 
 try {
   await fs.access(targetDir);
