@@ -198,6 +198,19 @@ video {
   display: none;
 }
 
+.video-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--ink);
+}
+
 .controls {
   display: flex;
   gap: 12px;
@@ -212,14 +225,14 @@ video {
   font-size: 0.85rem;
 }
 
-.now-row {
-  display: grid;
-  gap: 10px;
-  align-items: start;
-  margin-top: 12px;
+.now-select {
+  width: 100%;
+  max-width: 520px;
 }
 
-.now-select {
+.now-block {
+  display: grid;
+  gap: 8px;
   width: 100%;
   max-width: 520px;
 }

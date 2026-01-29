@@ -51,11 +51,10 @@
       </section>
 
       <section class="card hidden" id="appView">
-        <div class="row"></div>
-
         <div class="video-shell">
           <video id="videoPlayer" controls></video>
           <div class="video-overlay" id="videoOverlay">Select a video to start</div>
+          <div class="video-loading hidden" id="videoLoading">Loading...</div>
         </div>
 
         <div class="controls">
@@ -66,12 +65,11 @@
             Subtitles
             <select id="subtitleSelect"></select>
           </label>
+          <div class="now-block">
+            <select id="nowPlayingSelect" class="now-select"></select>
+            <button id="applyVideoButton" class="ghost now-apply" disabled>Apply</button>
+          </div>
         </div>
-        <div class="now-row">
-          <select id="nowPlayingSelect" class="now-select"></select>
-          <button id="applyVideoButton" class="ghost now-apply" disabled>Apply</button>
-        </div>
-        <div class="hint" id="videoStatus"></div>
 
         <div class="admin-panel hidden" id="adminPanel">
           <div class="invite-section">
@@ -97,6 +95,6 @@
       </section>
     </main>
 
-    <script src="/app.js?v=3"></script>
+    <script src="/app.js?v=4"></script>
   </body>
 </html>

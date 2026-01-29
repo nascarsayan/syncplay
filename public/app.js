@@ -41,7 +41,7 @@ const el = {
   subtitleSelect: document.getElementById("subtitleSelect"),
   nowPlayingSelect: document.getElementById("nowPlayingSelect"),
   applyVideoButton: document.getElementById("applyVideoButton"),
-  videoStatus: document.getElementById("videoStatus"),
+  videoLoading: document.getElementById("videoLoading"),
   adminPanel: document.getElementById("adminPanel"),
   inviteCreateForm: document.getElementById("inviteCreateForm"),
   inviteEmailAdmin: document.getElementById("inviteEmailAdmin"),
@@ -60,6 +60,7 @@ function show(view) {
 }
 
 function setHint(target, message, isError = false) {
+  if (!target) return;
   target.textContent = message;
   target.classList.toggle("error", Boolean(isError));
 }
@@ -171,8 +172,8 @@ function applyState(data) {
     state.subtitleLastCount = 0;
     if (videoPath) {
       clearSubtitles();
-      setHint(el.videoStatus, "Loading video...");
       setControlsEnabled(false);
+      if (el.videoLoading) el.videoLoading.classList.remove("hidden");
       el.videoPlayer.src = `/media/${encodeURIComponent(videoPath)}`;
       el.videoOverlay.classList.add("hidden");
       log("applyState:loadSubtitles", videoPath);
@@ -184,8 +185,8 @@ function applyState(data) {
       el.videoPlayer.removeAttribute("src");
       el.videoPlayer.load();
       el.videoOverlay.classList.remove("hidden");
-      setHint(el.videoStatus, "No video selected.");
       setControlsEnabled(false);
+      if (el.videoLoading) el.videoLoading.classList.add("hidden");
       clearSubtitles();
     }
     updateNowPlayingLabel();
@@ -426,16 +427,19 @@ el.fullscreenButton.addEventListener("click", () => {
 });
 
 el.videoPlayer.addEventListener("loadedmetadata", () => {
-  setHint(el.videoStatus, "Video metadata loaded.");
+  if (el.videoLoading) el.videoLoading.textContent = "Loading...";
 });
 
 el.videoPlayer.addEventListener("canplay", () => {
-  setHint(el.videoStatus, "Video ready.");
+  if (el.videoLoading) el.videoLoading.classList.add("hidden");
   setControlsEnabled(true);
 });
 
 el.videoPlayer.addEventListener("error", () => {
-  setHint(el.videoStatus, "Video failed to load.", true);
+  if (el.videoLoading) {
+    el.videoLoading.textContent = "Failed to load.";
+    el.videoLoading.classList.remove("hidden");
+  }
   setControlsEnabled(false);
 });
 
@@ -474,20 +478,21 @@ el.nowPlayingSelect.addEventListener("change", () => {
   if (el.applyVideoButton) {
     el.applyVideoButton.disabled = !videoPath || videoPath === state.currentVideo;
   }
-  setHint(el.videoStatus, videoPath ? "Selection staged. Click Apply to switch." : "No video selected.");
 });
 
 if (el.applyVideoButton) {
   el.applyVideoButton.addEventListener("click", async () => {
     const videoPath = el.nowPlayingSelect.value || null;
     log("applyVideoButton:click", videoPath);
-    setHint(el.videoStatus, "Switching video...");
     setControlsEnabled(false);
+    if (el.videoLoading) {
+      el.videoLoading.textContent = "Loading...";
+      el.videoLoading.classList.remove("hidden");
+    }
     await fetchJSON("/api/room/set-video", {
       method: "POST",
       body: JSON.stringify({ roomId: state.roomId, videoPath }),
     });
-    setHint(el.videoStatus, videoPath ? "Video selected. Loading..." : "Cleared video.");
     if (el.applyVideoButton) el.applyVideoButton.disabled = true;
   });
 }
