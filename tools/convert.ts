@@ -133,10 +133,12 @@ async function convertOne(inputPath: string, force: boolean) {
   ]);
 
   if (fastOk) {
-    try {
-      await fs.unlink(inputPath);
-    } catch {
-      // ignore delete errors
+    if (shouldDelete) {
+      try {
+        await fs.unlink(inputPath);
+      } catch {
+        // ignore delete errors
+      }
     }
     return;
   }
@@ -172,16 +174,19 @@ async function convertOne(inputPath: string, force: boolean) {
   }
 
   await sanityCheck(outputPath);
-  try {
-    await fs.unlink(inputPath);
-  } catch {
-    // ignore delete errors
+  if (shouldDelete) {
+    try {
+      await fs.unlink(inputPath);
+    } catch {
+      // ignore delete errors
+    }
   }
 }
 
 const rawArgs = process.argv.slice(2);
 const force = rawArgs.includes("--force");
-const args = rawArgs.filter((arg) => arg !== "--" && arg !== "--force");
+const shouldDelete = rawArgs.includes("--delete");
+const args = rawArgs.filter((arg) => arg !== "--" && arg !== "--force" && arg !== "--delete");
 const targetDir = args[0] ? path.resolve(VIDEO_DIR, args[0]) : VIDEO_DIR;
 
 try {
