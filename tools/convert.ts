@@ -2,15 +2,15 @@ import { promises as fs } from "fs";
 import path from "path";
 const VIDEO_DIR = process.env.VIDEO_DIR ?? path.join(process.cwd(), "videos");
 
-const exts = new Set([".mkv", ".mov", ".avi"]);
+const baseExts = new Set([".mkv", ".mov", ".avi"]);
 
-async function walk(dir: string): Promise<string[]> {
+async function walk(dir: string, exts: Set<string>): Promise<string[]> {
   const out: string[] = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      out.push(...(await walk(full)));
+      out.push(...(await walk(full, exts)));
       continue;
     }
     if (!entry.isFile()) continue;
@@ -116,17 +116,26 @@ async function convertOne(inputPath: string, force: boolean) {
   let outputPath = path.join(dir, `${base}.mp4`);
   let tempOutputPath: string | null = null;
   let needsMp4Fix = false;
+  let mustTranscodeVideo = false;
 
   if (isMp4) {
     const info = await getVideoInfo(inputPath);
     if (!info) return;
     needsMp4Fix = info.codec !== "h264" || /10/.test(info.pixFmt);
     if (!needsMp4Fix) return;
+    mustTranscodeVideo = true;
     if (shouldDelete) {
       tempOutputPath = `${inputPath}.tmp.mp4`;
       outputPath = tempOutputPath;
     } else {
       outputPath = path.join(dir, `${base}.h264.mp4`);
+    }
+  } else {
+    const info = await getVideoInfo(inputPath);
+    if (info) {
+      mustTranscodeVideo = force || info.codec !== "h264" || /10/.test(info.pixFmt);
+    } else {
+      mustTranscodeVideo = force;
     }
   }
 
@@ -149,26 +158,29 @@ async function convertOne(inputPath: string, force: boolean) {
 
   console.log(`convert: ${inputPath}`);
 
-  const fastOk = await runFfmpeg([
-    "-i",
-    inputPath,
-    "-map",
-    "0:v:0",
-    "-map",
-    "0:a:0?",
-    "-sn",
-    "-c:v",
-    "copy",
-    "-c:a",
-    "aac",
-    "-ac",
-    "2",
-    "-b:a",
-    "160k",
-    "-movflags",
-    "+faststart",
-    outputPath,
-  ]);
+  let fastOk = false;
+  if (!mustTranscodeVideo) {
+    fastOk = await runFfmpeg([
+      "-i",
+      inputPath,
+      "-map",
+      "0:v:0",
+      "-map",
+      "0:a:0?",
+      "-sn",
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      "-ac",
+      "2",
+      "-b:a",
+      "160k",
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ]);
+  }
 
   if (!fastOk) {
     console.log(`fallback transcode: ${inputPath}`);
@@ -226,6 +238,8 @@ const force = rawArgs.includes("--force");
 const shouldDelete = rawArgs.includes("--delete");
 const args = rawArgs.filter((arg) => arg !== "--" && arg !== "--force" && arg !== "--delete");
 const targetDir = args[0] ? path.resolve(VIDEO_DIR, args[0]) : VIDEO_DIR;
+const exts = new Set(baseExts);
+if (force) exts.add(".mp4");
 
 try {
   await fs.access(targetDir);
@@ -234,7 +248,7 @@ try {
   process.exit(1);
 }
 
-const files = await walk(targetDir);
+const files = await walk(targetDir, exts);
 if (files.length === 0) {
   console.log(`no convertible files in ${VIDEO_DIR} (use --force to reconvert)`);
   process.exit(0);
