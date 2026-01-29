@@ -144,13 +144,24 @@ async function extractForFile(inputPath: string) {
   }
 }
 
-await fs.mkdir(VIDEO_DIR, { recursive: true });
-await extractArchives(VIDEO_DIR);
-await ensureVideoFolders(VIDEO_DIR);
+const rawArgs = process.argv.slice(2);
+const args = rawArgs.filter((arg) => arg !== "--" && arg !== "--force");
+const targetDir = args[0] ? path.resolve(VIDEO_DIR, args[0]) : VIDEO_DIR;
 
-const videoFiles = await findVideoFiles(VIDEO_DIR);
+try {
+  await fs.access(targetDir);
+} catch {
+  console.log(`folder not found: ${targetDir}`);
+  process.exit(1);
+}
+
+await fs.mkdir(targetDir, { recursive: true });
+await extractArchives(targetDir);
+await ensureVideoFolders(targetDir);
+
+const videoFiles = await findVideoFiles(targetDir);
 if (videoFiles.length === 0) {
-  console.log(`no video files in ${VIDEO_DIR}`);
+  console.log(`no video files in ${targetDir}`);
   process.exit(0);
 }
 
