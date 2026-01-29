@@ -83,16 +83,54 @@ async function getAudioChannels(filePath: string) {
   return parsed.streams?.[0]?.channels ?? 0;
 }
 
+async function getVideoInfo(filePath: string) {
+  const probe = Bun.spawn([
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "v:0",
+    "-show_entries",
+    "stream=codec_name,pix_fmt",
+    "-print_format",
+    "json",
+    filePath,
+  ]);
+  const out = await new Response(probe.stdout).text();
+  const code = await probe.exited;
+  if (code !== 0) return null;
+  const parsed = JSON.parse(out) as { streams?: Array<{ codec_name?: string; pix_fmt?: string }> };
+  const stream = parsed.streams?.[0];
+  if (!stream) return null;
+  return { codec: stream.codec_name ?? "", pixFmt: stream.pix_fmt ?? "" };
+}
+
 async function convertOne(inputPath: string, force: boolean) {
   const dir = path.dirname(inputPath);
   const ext = path.extname(inputPath).toLowerCase();
-  if (ext === ".mp4" || ext === ".webm") {
-    return;
-  }
-  const base = path.basename(inputPath, ext);
-  const outputPath = path.join(dir, `${base}.mp4`);
+  const isWebm = ext === ".webm";
+  const isMp4 = ext === ".mp4";
+  if (isWebm) return;
 
-  if (!force && (await fileNewer(outputPath, inputPath))) {
+  const base = path.basename(inputPath, ext);
+  let outputPath = path.join(dir, `${base}.mp4`);
+  let tempOutputPath: string | null = null;
+  let needsMp4Fix = false;
+
+  if (isMp4) {
+    const info = await getVideoInfo(inputPath);
+    if (!info) return;
+    needsMp4Fix = info.codec !== "h264" || /10/.test(info.pixFmt);
+    if (!needsMp4Fix) return;
+    if (shouldDelete) {
+      tempOutputPath = `${inputPath}.tmp.mp4`;
+      outputPath = tempOutputPath;
+    } else {
+      outputPath = path.join(dir, `${base}.h264.mp4`);
+    }
+  }
+
+  if (!force && !isMp4 && (await fileNewer(outputPath, inputPath))) {
     const channels = await getAudioChannels(outputPath);
     if (channels > 2) {
       console.log(`re-encode audio to stereo: ${outputPath}`);
@@ -132,49 +170,49 @@ async function convertOne(inputPath: string, force: boolean) {
     outputPath,
   ]);
 
-  if (fastOk) {
-    if (shouldDelete) {
-      try {
-        await fs.unlink(inputPath);
-      } catch {
-        // ignore delete errors
-      }
+  if (!fastOk) {
+    console.log(`fallback transcode: ${inputPath}`);
+    const ok = await runFfmpeg([
+      "-i",
+      inputPath,
+      "-map",
+      "0:v:0",
+      "-map",
+      "0:a:0?",
+      "-sn",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "23",
+      "-c:a",
+      "aac",
+      "-ac",
+      "2",
+      "-b:a",
+      "160k",
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ]);
+
+    if (!ok) {
+      throw new Error(`ffmpeg failed for ${inputPath}`);
     }
-    return;
-  }
-
-  console.log(`fallback transcode: ${inputPath}`);
-  const ok = await runFfmpeg([
-    "-i",
-    inputPath,
-    "-map",
-    "0:v:0",
-    "-map",
-    "0:a:0?",
-    "-sn",
-    "-c:v",
-    "libx264",
-    "-preset",
-    "veryfast",
-    "-crf",
-    "23",
-    "-c:a",
-    "aac",
-    "-ac",
-    "2",
-    "-b:a",
-    "160k",
-    "-movflags",
-    "+faststart",
-    outputPath,
-  ]);
-
-  if (!ok) {
-    throw new Error(`ffmpeg failed for ${inputPath}`);
   }
 
   await sanityCheck(outputPath);
-  if (shouldDelete) {
+  if (isMp4 && needsMp4Fix && shouldDelete && tempOutputPath) {
+    try {
+      await fs.unlink(inputPath);
+    } catch {
+      // ignore delete errors
+    }
+    await fs.rename(tempOutputPath, inputPath);
+    return;
+  }
+  if (shouldDelete && !isMp4) {
     try {
       await fs.unlink(inputPath);
     } catch {
