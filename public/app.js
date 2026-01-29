@@ -427,7 +427,7 @@ el.fullscreenButton.addEventListener("click", () => {
 });
 
 el.videoPlayer.addEventListener("loadedmetadata", () => {
-  if (el.videoLoading) el.videoLoading.textContent = "Loading...";
+  if (el.videoLoading) el.videoLoading.classList.remove("hidden");
 });
 
 el.videoPlayer.addEventListener("canplay", () => {
@@ -435,9 +435,28 @@ el.videoPlayer.addEventListener("canplay", () => {
   setControlsEnabled(true);
 });
 
+el.videoPlayer.addEventListener("canplaythrough", () => {
+  if (el.videoLoading) el.videoLoading.classList.add("hidden");
+});
+
+el.videoPlayer.addEventListener("playing", () => {
+  if (el.videoLoading) el.videoLoading.classList.add("hidden");
+});
+
+el.videoPlayer.addEventListener("loadstart", () => {
+  if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+});
+
+el.videoPlayer.addEventListener("waiting", () => {
+  if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+});
+
+el.videoPlayer.addEventListener("stalled", () => {
+  if (el.videoLoading) el.videoLoading.classList.remove("hidden");
+});
+
 el.videoPlayer.addEventListener("error", () => {
   if (el.videoLoading) {
-    el.videoLoading.textContent = "Failed to load.";
     el.videoLoading.classList.remove("hidden");
   }
   setControlsEnabled(false);
@@ -486,7 +505,6 @@ if (el.applyVideoButton) {
     log("applyVideoButton:click", videoPath);
     setControlsEnabled(false);
     if (el.videoLoading) {
-      el.videoLoading.textContent = "Loading...";
       el.videoLoading.classList.remove("hidden");
     }
     await fetchJSON("/api/room/set-video", {

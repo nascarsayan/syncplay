@@ -198,15 +198,30 @@ video {
   display: none;
 }
 
+.iconify {
+  font-size: 1.1rem;
+}
+
+.spin {
+  animation: spin 1.1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .video-loading {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 1.4rem;
   background: rgba(0, 0, 0, 0.6);
   color: var(--ink);
 }

@@ -54,20 +54,30 @@
         <div class="video-shell">
           <video id="videoPlayer" controls></video>
           <div class="video-overlay" id="videoOverlay">Select a video to start</div>
-          <div class="video-loading hidden" id="videoLoading">Loading...</div>
+          <div class="video-loading hidden" id="videoLoading" aria-live="polite">
+            <span class="iconify spin" data-icon="mdi:loading"></span>
+          </div>
         </div>
 
         <div class="controls">
-          <button id="seekBack">-10s</button>
-          <button id="seekForward">+10s</button>
-          <button id="fullscreenButton">Fullscreen</button>
+          <button id="seekBack" aria-label="Back 10 seconds">
+            <span class="iconify" data-icon="mdi:rewind-10"></span>
+          </button>
+          <button id="seekForward" aria-label="Forward 10 seconds">
+            <span class="iconify" data-icon="mdi:fast-forward-10"></span>
+          </button>
+          <button id="fullscreenButton" aria-label="Fullscreen">
+            <span class="iconify" data-icon="mdi:fullscreen"></span>
+          </button>
           <label class="inline-field">
-            Subtitles
+            <span class="iconify" data-icon="mdi:subtitles"></span>
             <select id="subtitleSelect"></select>
           </label>
           <div class="now-block">
             <select id="nowPlayingSelect" class="now-select"></select>
-            <button id="applyVideoButton" class="ghost now-apply" disabled>Apply</button>
+            <button id="applyVideoButton" class="ghost now-apply" aria-label="Apply video" disabled>
+              <span class="iconify" data-icon="mdi:check"></span>
+            </button>
           </div>
         </div>
 
@@ -95,6 +105,7 @@
       </section>
     </main>
 
-    <script src="/app.js?v=4"></script>
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+    <script src="/app.js?v=5"></script>
   </body>
 </html>
