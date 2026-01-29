@@ -200,8 +200,9 @@ video {
 }
 
 .inline-field {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 0.85rem;
 }
 

@@ -248,7 +248,7 @@ async function loadInvites() {
     const item = document.createElement("div");
     item.className = "invite-item";
     const email = invite.email ? `for ${invite.email}` : "open";
-    item.textContent = `${invite.token} · ${email} · remaining ${invite.uses_remaining}`;
+    item.textContent = `${invite.token} · ${email}`;
     el.inviteList.appendChild(item);
   }
 }

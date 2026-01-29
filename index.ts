@@ -10,7 +10,6 @@ const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
 const DB_PATH = process.env.DB_PATH ?? path.join(DATA_DIR, "syncplay.db");
 const VIDEO_DIR = process.env.VIDEO_DIR ?? path.join(process.cwd(), "videos");
 const VIDEO_ROOT = path.resolve(VIDEO_DIR);
-const SUBTITLE_DIR = path.join(DATA_DIR, "subtitles");
 const APP_BASE_URL = process.env.APP_BASE_URL ?? `http://localhost:${PORT}`;
 const NODE_ENV = process.env.NODE_ENV ?? "development";
 const SESSION_TTL_HOURS = Number(process.env.SESSION_TTL_HOURS ?? 24 * 7);
@@ -21,7 +20,6 @@ const TEST_USERS = (process.env.TEST_USERS ?? "").split(",").map((v) => v.trim()
 
 await fs.mkdir(DATA_DIR, { recursive: true });
 await fs.mkdir(VIDEO_DIR, { recursive: true });
-await fs.mkdir(SUBTITLE_DIR, { recursive: true });
 
 const db = new Database(DB_PATH);
 
@@ -220,21 +218,58 @@ async function listVideoFiles(dir: string) {
   return results;
 }
 
-async function listSubtitleTracks(relativeKey: string) {
-  const hash = hashPath(relativeKey);
-  const outDir = path.join(SUBTITLE_DIR, hash);
-  let files: string[] = [];
-  try {
-    files = (await fs.readdir(outDir)).filter((f) => f.endsWith(".vtt"));
-  } catch {
-    return { hash, tracks: [] as Array<{ label: string; file: string }> };
+async function listSubtitleTracks(relativeVideoPath: string) {
+  const dir = path.dirname(relativeVideoPath);
+  const base = path.basename(relativeVideoPath);
+  const baseDir = path.resolve(VIDEO_ROOT, dir, `${base}.d`);
+  const videoDir = path.resolve(VIDEO_ROOT, dir);
+  const searchRoots = [baseDir, videoDir];
+
+  const tracks: Array<{ label: string; file: string; rel: string }> = [];
+  const seen = new Set<string>();
+
+  function labelFromFilename(filename: string) {
+    const stripped = filename.replace(/\.(vtt|srt)$/i, "");
+    const match = /^sub_\d+_([a-z0-9-]+)$/i.exec(stripped);
+    if (match?.[1]) return match[1];
+    return stripped;
   }
-  files.sort();
-  const tracks = files.map((file) => {
-    const lang = file.split("_")[2]?.replace(".vtt", "") ?? "und";
-    return { label: lang, file };
-  });
-  return { hash, tracks };
+
+  async function walk(current: string) {
+    let entries: any[] = [];
+    try {
+      entries = await fs.readdir(current, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (!/\\.(vtt|srt)$/i.test(entry.name)) continue;
+
+      const rel = path.relative(VIDEO_ROOT, fullPath);
+      const inBaseDir = rel.startsWith(path.relative(VIDEO_ROOT, baseDir) + path.sep);
+      if (!inBaseDir && !rel.startsWith(path.relative(VIDEO_ROOT, videoDir) + path.sep)) continue;
+
+      if (seen.has(rel)) continue;
+      seen.add(rel);
+      tracks.push({ label: labelFromFilename(entry.name), file: entry.name, rel });
+    }
+  }
+
+  for (const root of searchRoots) {
+    await walk(root);
+  }
+
+  tracks.sort((a, b) => a.label.localeCompare(b.label));
+  return {
+    hash: hashPath(relativeVideoPath),
+    tracks: tracks.map((t) => ({ label: t.label, file: t.rel })),
+  };
 }
 
 async function getSubtitleTracks(relativeVideoPath: string) {
@@ -420,9 +455,9 @@ const server = Bun.serve({
 
     if (url.pathname.startsWith("/subs/")) {
       const relativePath = decodeURIComponent(url.pathname.replace("/subs/", ""));
-      const filePath = path.resolve(SUBTITLE_DIR, relativePath);
+      const filePath = path.resolve(VIDEO_ROOT, relativePath);
 
-      if (!filePath.startsWith(SUBTITLE_DIR + path.sep)) {
+      if (!filePath.startsWith(VIDEO_ROOT + path.sep)) {
         return new Response("Invalid path", { status: 403 });
       }
 
@@ -460,7 +495,7 @@ const server = Bun.serve({
         return jsonResponse({
           tracks: tracks.map((t) => ({
             label: t.label,
-            url: `/subs/${hash}/${t.file}`,
+            url: `/subs/${encodeURIComponent(t.file)}`,
           })),
         });
       } catch (error: any) {

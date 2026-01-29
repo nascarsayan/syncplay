@@ -40,7 +40,7 @@ Login is invite-only. Use the invite link and you are signed in immediately.
 bun run invite -- user1@example.com user2@example.com
 ```
 
-## Convert videos to MP4 + subtitles
+## Convert videos to MP4
 
 Browsers typically require MP4 (H.264 + AAC). Convert any `.mkv`, `.mov`, `.webm`, or `.avi` in `VIDEO_DIR`:
 
@@ -49,13 +49,27 @@ bun run convert
 ```
 
 Requires `ffmpeg` installed on the system.
-Subtitles are extracted to `data/subtitles` when available.
+
+## Extract subtitles & organize videos
+
+`bun run subs` will:
+
+- extract archives (`.zip`, `.tar`, `.tar.gz`, `.tgz`) inside `VIDEO_DIR`
+- ensure each video under `videos/` lives in its own folder
+- extract embedded subtitles to `<video-filename>.d/` (VTT)
+
+```bash
+bun run subs
+```
+
+Requires `ffmpeg`, `tar`, and `unzip`.
 
 ## Notes
 
 - Admins can create invite links and pick the active video.
 - Invite acceptance whitelists the email and signs the user in.
-- Video files are served from `VIDEO_DIR` and must be `.mp4` (recommended) or `.webm`.
+- Video files are served from `VIDEO_DIR` and can be `.mp4`, `.webm`, `.mkv`, or `.mov`.
+- For manual subtitles, drop `.srt` or `.vtt` files inside `<video-filename>.d/` next to the video.
 
 ## Caddy
 
