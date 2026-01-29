@@ -71,6 +71,18 @@ Requires `ffmpeg`, `tar`, and `unzip`.
 - Video files are served from `VIDEO_DIR` and can be `.mp4`, `.webm`, `.mkv`, or `.mov`.
 - For manual subtitles, drop `.srt` or `.vtt` files anywhere inside the video’s folder (recursive).
 
+## Release process
+
+1) Update code and push to `master`.
+2) Ensure the server is deployed with `./deploy.sh`.
+3) Create a tag and GitHub release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+gh release create v1.0.0 --title "v1.0.0" --notes "<changelog>"
+```
+
 ## Caddy
 
 A `Caddyfile` is included to route `syncplay.riddhayan.dpdns.org` to the app.
