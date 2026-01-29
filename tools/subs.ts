@@ -18,7 +18,7 @@ function isArchive(filename: string) {
   return ARCHIVE_EXTS.has(ext);
 }
 
-async function walk(dir: string, skipSuffixes: string[] = []): Promise<string[]> {
+async function walk(dir: string): Promise<string[]> {
   const out: string[] = [];
   let entries: any[] = [];
   try {
@@ -29,8 +29,7 @@ async function walk(dir: string, skipSuffixes: string[] = []): Promise<string[]>
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (skipSuffixes.some((s) => entry.name.endsWith(s))) continue;
-      out.push(...(await walk(full, skipSuffixes)));
+      out.push(...(await walk(full)));
       continue;
     }
     if (!entry.isFile()) continue;
@@ -59,7 +58,7 @@ async function extractArchive(filePath: string) {
 }
 
 async function extractArchives(root: string) {
-  const files = await walk(root, [".d"]);
+  const files = await walk(root);
   for (const file of files) {
     if (!isArchive(file)) continue;
     await extractArchive(file);
@@ -95,7 +94,7 @@ async function ensureVideoFolders(root: string) {
 }
 
 async function findVideoFiles(root: string) {
-  const files = await walk(root, [".d"]);
+  const files = await walk(root);
   return files.filter((file) => VIDEO_EXTS.has(path.extname(file).toLowerCase()));
 }
 
@@ -105,10 +104,6 @@ async function runFfmpeg(args: string[]) {
 
 async function extractForFile(inputPath: string) {
   const dir = path.dirname(inputPath);
-  const base = path.basename(inputPath);
-  const outDir = path.join(dir, `${base}.d`);
-  await fs.mkdir(outDir, { recursive: true });
-
   const probe = Bun.spawn([
     "ffprobe",
     "-v",
@@ -141,27 +136,11 @@ async function extractForFile(inputPath: string) {
       continue;
     }
     const lang = stream.tags?.language ?? "und";
-    const outFile = path.join(outDir, `sub_${globalIndex}_${lang}.vtt`);
+    const outFile = path.join(dir, `sub_${globalIndex}_${lang}.vtt`);
     const ok = await runFfmpeg(["-i", inputPath, "-map", `0:${globalIndex}`, outFile]);
     if (!ok) {
       console.log(`failed to extract subtitle stream ${globalIndex} (${lang})`);
     }
-  }
-}
-
-async function convertSrtToVtt(dir: string) {
-  const files = await walk(dir);
-  for (const file of files) {
-    if (!file.toLowerCase().endsWith(".srt")) continue;
-    const dest = file.replace(/\.srt$/i, ".vtt");
-    try {
-      await fs.access(dest);
-      continue;
-    } catch {
-      // continue conversion
-    }
-    console.log(`convert srt -> vtt: ${file}`);
-    await runFfmpeg(["-i", file, dest]);
   }
 }
 
@@ -175,8 +154,14 @@ if (videoFiles.length === 0) {
   process.exit(0);
 }
 
+const byDir = new Map<string, string[]>();
 for (const file of videoFiles) {
-  await extractForFile(file);
-  const outDir = path.join(path.dirname(file), `${path.basename(file)}.d`);
-  await convertSrtToVtt(outDir);
+  const parent = path.dirname(file);
+  if (!byDir.has(parent)) byDir.set(parent, []);
+  byDir.get(parent)!.push(file);
+}
+
+for (const files of byDir.values()) {
+  files.sort();
+  await extractForFile(files[0]);
 }

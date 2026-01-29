@@ -56,7 +56,7 @@ Requires `ffmpeg` installed on the system.
 
 - extract archives (`.zip`, `.tar`, `.tar.gz`, `.tgz`) inside `VIDEO_DIR`
 - ensure each video under `videos/` lives in its own folder
-- extract embedded subtitles to `<video-filename>.d/` (VTT)
+- extract embedded subtitles next to the video file (VTT)
 
 ```bash
 bun run subs
@@ -69,7 +69,7 @@ Requires `ffmpeg`, `tar`, and `unzip`.
 - Admins can create invite links and pick the active video.
 - Invite acceptance whitelists the email and signs the user in.
 - Video files are served from `VIDEO_DIR` and can be `.mp4`, `.webm`, `.mkv`, or `.mov`.
-- For manual subtitles, drop `.srt` or `.vtt` files inside `<video-filename>.d/` next to the video.
+- For manual subtitles, drop `.srt` or `.vtt` files anywhere inside the video’s folder (recursive).
 
 ## Caddy
 

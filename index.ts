@@ -195,7 +195,7 @@ function updateRoomState(roomId: string, updates: Partial<{ video_path: string |
 }
 
 async function listVideoFiles(dir: string) {
-  const results: string[] = [];
+  const byDir = new Map<string, string[]>();
 
   async function walk(current: string) {
     const entries = await fs.readdir(current, { withFileTypes: true });
@@ -208,22 +208,27 @@ async function listVideoFiles(dir: string) {
       if (!entry.isFile()) continue;
       const ext = path.extname(entry.name).toLowerCase();
       if ([".mp4", ".webm", ".mkv", ".mov"].includes(ext)) {
-        results.push(path.relative(dir, fullPath));
+        const parent = path.dirname(fullPath);
+        if (!byDir.has(parent)) byDir.set(parent, []);
+        byDir.get(parent)!.push(path.relative(dir, fullPath));
       }
     }
   }
 
   await walk(dir);
+  const results: string[] = [];
+  for (const files of byDir.values()) {
+    files.sort();
+    results.push(files[0]);
+  }
   results.sort();
   return results;
 }
 
 async function listSubtitleTracks(relativeVideoPath: string) {
   const dir = path.dirname(relativeVideoPath);
-  const base = path.basename(relativeVideoPath);
-  const baseDir = path.resolve(VIDEO_ROOT, dir, `${base}.d`);
   const videoDir = path.resolve(VIDEO_ROOT, dir);
-  const searchRoots = [baseDir, videoDir];
+  const searchRoots = [videoDir];
 
   const tracks: Array<{ label: string; file: string; rel: string }> = [];
   const seen = new Set<string>();
@@ -252,8 +257,7 @@ async function listSubtitleTracks(relativeVideoPath: string) {
       if (!/\\.(vtt|srt)$/i.test(entry.name)) continue;
 
       const rel = path.relative(VIDEO_ROOT, fullPath);
-      const inBaseDir = rel.startsWith(path.relative(VIDEO_ROOT, baseDir) + path.sep);
-      if (!inBaseDir && !rel.startsWith(path.relative(VIDEO_ROOT, videoDir) + path.sep)) continue;
+      if (!rel.startsWith(path.relative(VIDEO_ROOT, videoDir) + path.sep)) continue;
 
       if (seen.has(rel)) continue;
       seen.add(rel);
