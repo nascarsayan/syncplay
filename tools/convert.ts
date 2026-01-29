@@ -194,6 +194,8 @@ async function convertOne(inputPath: string, force: boolean) {
       "-sn",
       "-c:v",
       "libx264",
+      "-pix_fmt",
+      "yuv420p",
       "-preset",
       "veryfast",
       "-crf",
