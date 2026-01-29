@@ -63,6 +63,12 @@ function setHint(target, message, isError = false) {
   target.classList.toggle("error", Boolean(isError));
 }
 
+function truncateMiddle(value, front = 28, back = 12) {
+  if (!value) return "";
+  if (value.length <= front + back + 3) return value;
+  return `${value.slice(0, front)}...${value.slice(-back)}`;
+}
+
 async function fetchJSON(url, options = {}) {
   const response = await fetch(url, {
     headers: { "Content-Type": "application/json" },
@@ -247,7 +253,8 @@ async function loadVideos() {
   for (const file of data.files) {
     const opt = document.createElement("option");
     opt.value = file;
-    opt.textContent = file;
+    opt.textContent = truncateMiddle(file);
+    opt.title = file;
     el.nowPlayingSelect.appendChild(opt);
   }
 }

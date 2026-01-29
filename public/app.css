@@ -208,17 +208,18 @@ video {
 
 .now-row {
   display: grid;
-  grid-template-columns: auto minmax(200px, 1fr);
-  gap: 12px;
-  align-items: center;
+  gap: 10px;
+  align-items: start;
   margin-top: 12px;
 }
 
-.now-controls {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  align-items: center;
+.now-select {
+  width: 100%;
+  max-width: 520px;
+}
+
+.now-apply {
+  width: fit-content;
 }
 
 .invite-header {
