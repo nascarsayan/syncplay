@@ -8,6 +8,7 @@ const state = {
   subtitleLoading: false,
   subtitleLastVideo: null,
   subtitleLastLoadedAt: 0,
+  subtitleLastCount: 0,
 };
 
 const DEBUG = true;
@@ -164,6 +165,9 @@ function applyState(data) {
 
   if (videoPath !== state.currentVideo) {
     state.currentVideo = videoPath;
+    state.subtitleLastVideo = null;
+    state.subtitleLastLoadedAt = 0;
+    state.subtitleLastCount = 0;
     if (videoPath) {
       clearSubtitles();
       setHint(el.videoStatus, "Loading video...");
@@ -270,7 +274,11 @@ async function loadInvites() {
 async function loadSubtitles(videoPath) {
   if (!el.subtitleSelect) return;
   if (state.subtitleLoading) return;
-  if (state.subtitleLastVideo === videoPath && Date.now() - state.subtitleLastLoadedAt < 30000) {
+  if (
+    state.subtitleLastVideo === videoPath &&
+    state.subtitleLastCount > 0 &&
+    Date.now() - state.subtitleLastLoadedAt < 30000
+  ) {
     log("loadSubtitles:skip_recent", videoPath);
     return;
   }
@@ -297,6 +305,7 @@ async function loadSubtitles(videoPath) {
       opt.textContent = track.label || track.url;
       el.subtitleSelect.appendChild(opt);
     }
+    state.subtitleLastCount = (data.tracks || []).length;
     applyPreferredSubtitle();
     if (previousValue) {
       const match = Array.from(el.subtitleSelect.options).find((opt) => opt.value === previousValue);
