@@ -13,10 +13,30 @@ const VIDEO_ROOT = path.resolve(VIDEO_DIR);
 const APP_BASE_URL = process.env.APP_BASE_URL ?? `http://localhost:${PORT}`;
 const NODE_ENV = process.env.NODE_ENV ?? "development";
 const SESSION_TTL_HOURS = Number(process.env.SESSION_TTL_HOURS ?? 24 * 7);
+const LOG_LEVEL = process.env.LOG_LEVEL ?? "debug";
 
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "").split(",").map((v) => v.trim()).filter(Boolean);
 const TEST_USERS = (process.env.TEST_USERS ?? "").split(",").map((v) => v.trim()).filter(Boolean);
+
+const LOG_LEVELS: Record<string, number> = { debug: 10, info: 20, warn: 30, error: 40 };
+const currentLogLevel = LOG_LEVELS[LOG_LEVEL] ?? 20;
+function logDebug(...args: any[]) {
+  if (currentLogLevel > LOG_LEVELS.debug) return;
+  console.log("[debug]", ...args);
+}
+function logInfo(...args: any[]) {
+  if (currentLogLevel > LOG_LEVELS.info) return;
+  console.log("[info]", ...args);
+}
+function logWarn(...args: any[]) {
+  if (currentLogLevel > LOG_LEVELS.warn) return;
+  console.warn("[warn]", ...args);
+}
+function logError(...args: any[]) {
+  if (currentLogLevel > LOG_LEVELS.error) return;
+  console.error("[error]", ...args);
+}
 
 await fs.mkdir(DATA_DIR, { recursive: true });
 await fs.mkdir(VIDEO_DIR, { recursive: true });
@@ -337,6 +357,7 @@ const server = Bun.serve({
   websocket: {
     open(ws) {
       const { roomId } = ws.data as { roomId: string };
+      logInfo("ws:open", roomId);
       const sockets = ensureRoomSockets(roomId);
       sockets.add(ws);
       const state = getRoomState(roomId);
@@ -357,6 +378,7 @@ const server = Bun.serve({
     },
     close(ws) {
       const { roomId } = ws.data as { roomId: string };
+      logInfo("ws:close", roomId);
       const sockets = socketsByRoom.get(roomId);
       if (sockets) sockets.delete(ws);
     },
@@ -372,6 +394,7 @@ const server = Bun.serve({
       if (!payload || typeof payload !== "object") return;
 
       if (payload.type === "action") {
+        logDebug("ws:action", payload);
         const action = payload.action as string;
         const position = Number(payload.position ?? 0);
         const playbackRate = Number(payload.playbackRate ?? 1);
@@ -416,18 +439,22 @@ const server = Bun.serve({
     if (url.pathname.startsWith("/media/")) {
       const relativePath = decodeURIComponent(url.pathname.replace("/media/", ""));
       const filePath = path.resolve(VIDEO_ROOT, relativePath);
+      logDebug("media:request", relativePath, filePath);
 
       if (!filePath.startsWith(VIDEO_ROOT + path.sep)) {
+        logWarn("media:invalid_path", filePath);
         return new Response("Invalid path", { status: 403 });
       }
 
       const file = Bun.file(filePath);
       if (!(await file.exists())) {
+        logWarn("media:not_found", filePath);
         return new Response("Not found", { status: 404 });
       }
 
       const range = request.headers.get("range");
       if (!range) {
+        logDebug("media:full", filePath, file.size);
         return new Response(file, {
           headers: {
             "Content-Type": file.type || "application/octet-stream",
@@ -443,9 +470,11 @@ const server = Bun.serve({
       const start = Number(match[1]);
       const end = match[2] ? Number(match[2]) : size - 1;
       if (Number.isNaN(start) || Number.isNaN(end) || start > end || end >= size) {
+        logWarn("media:bad_range", range, filePath);
         return new Response("Invalid range", { status: 416 });
       }
 
+      logDebug("media:range", filePath, start, end);
       return new Response(file.slice(start, end + 1), {
         status: 206,
         headers: {
@@ -460,16 +489,20 @@ const server = Bun.serve({
     if (url.pathname.startsWith("/subs/")) {
       const relativePath = decodeURIComponent(url.pathname.replace("/subs/", ""));
       const filePath = path.resolve(VIDEO_ROOT, relativePath);
+      logDebug("subs:request", relativePath, filePath);
 
       if (!filePath.startsWith(VIDEO_ROOT + path.sep)) {
+        logWarn("subs:invalid_path", filePath);
         return new Response("Invalid path", { status: 403 });
       }
 
       const file = Bun.file(filePath);
       if (!(await file.exists())) {
+        logWarn("subs:not_found", filePath);
         return new Response("Not found", { status: 404 });
       }
 
+      logDebug("subs:serve", filePath);
       return new Response(file, {
         headers: { "Content-Type": "text/vtt" },
       });
@@ -485,6 +518,7 @@ const server = Bun.serve({
       const auth = requireAuth(request);
       if (!auth.ok) return auth.response;
       const files = await listVideoFiles(VIDEO_DIR);
+      logInfo("api:videos", files.length);
       return jsonResponse({ files });
     }
 
@@ -496,6 +530,7 @@ const server = Bun.serve({
 
       try {
         const { hash, tracks } = await getSubtitleTracks(videoPath);
+        logInfo("api:subtitles", videoPath, tracks.length, tracks.map((t) => t.label));
         return jsonResponse({
           tracks: tracks.map((t) => ({
             label: t.label,
@@ -503,6 +538,7 @@ const server = Bun.serve({
           })),
         });
       } catch (error: any) {
+        logError("api:subtitles:error", videoPath, error?.message || error);
         return jsonResponse({ error: error?.message ?? "Subtitle extraction failed" }, 500);
       }
     }
@@ -512,6 +548,7 @@ const server = Bun.serve({
       if (!auth.ok) return auth.response;
       const roomId = url.searchParams.get("room") ?? "main";
       const state = getRoomState(roomId);
+      logDebug("api:room:state", roomId, state.video_path, state.position, state.paused);
       return jsonResponse({
         roomId,
         videoPath: state.video_path,
@@ -529,6 +566,7 @@ const server = Bun.serve({
       const body = (await request.json()) as { roomId?: string; videoPath?: string | null };
       const roomId = body.roomId ?? "main";
       const videoPath = body.videoPath ?? null;
+      logInfo("api:room:set-video", roomId, videoPath);
       const next = updateRoomState(roomId, {
         video_path: videoPath,
         position: 0,

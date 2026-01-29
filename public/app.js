@@ -5,7 +5,16 @@ const state = {
   applyingRemote: false,
   currentVideo: null,
   ignoreEventsUntil: 0,
+  subtitleLoading: false,
+  subtitleLastVideo: null,
+  subtitleLastLoadedAt: 0,
 };
+
+const DEBUG = true;
+function log(...args) {
+  if (!DEBUG) return;
+  console.log("[syncplay]", ...args);
+}
 
 const el = {
   statusBadge: document.getElementById("statusBadge"),
@@ -54,12 +63,14 @@ function setHint(target, message, isError = false) {
 }
 
 async function fetchJSON(url, options = {}) {
+  log("fetchJSON", url, options.method || "GET");
   const response = await fetch(url, {
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     ...options,
   });
   const data = await response.json().catch(() => ({}));
+  log("fetchJSON:response", url, response.status, data);
   if (!response.ok) {
     throw new Error(data.error || "Request failed");
   }
@@ -67,13 +78,16 @@ async function fetchJSON(url, options = {}) {
 }
 
 async function loadSession() {
+  log("loadSession:start");
   const data = await fetchJSON("/api/me", { method: "GET" });
   state.user = data.user;
   if (!state.user) {
+    log("loadSession:logged_out");
     show(el.loginView);
     el.adminBadge.classList.add("hidden");
     return;
   }
+  log("loadSession:logged_in", state.user.email, "admin", state.user.isAdmin);
   show(el.appView);
   el.userEmail.textContent = state.user.email;
   el.adminBadge.classList.toggle("hidden", !state.user.isAdmin);
@@ -85,6 +99,7 @@ async function loadSession() {
   try {
     const room = await fetchJSON(`/api/room/state?room=${encodeURIComponent(state.roomId)}`);
     if (room?.videoPath) {
+      log("loadSession:room_state", room);
       loadSubtitles(room.videoPath).then(() => {
         applyPreferredSubtitle();
       });
@@ -107,8 +122,14 @@ function connectWebSocket() {
   const ws = new WebSocket(`${protocol}://${location.host}/ws?room=${state.roomId}`);
   state.ws = ws;
 
-  ws.addEventListener("open", () => syncStatus(true));
-  ws.addEventListener("close", () => syncStatus(false));
+  ws.addEventListener("open", () => {
+    log("ws:open");
+    syncStatus(true);
+  });
+  ws.addEventListener("close", () => {
+    log("ws:close");
+    syncStatus(false);
+  });
 
   ws.addEventListener("message", (event) => {
     let payload = null;
@@ -118,12 +139,14 @@ function connectWebSocket() {
       return;
     }
     if (!payload || payload.type !== "state") return;
+    log("ws:state", payload.data);
     applyState(payload.data);
   });
 }
 
 function sendAction(action) {
   if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+  log("ws:send", action);
   state.ws.send(
     JSON.stringify({
       type: "action",
@@ -136,6 +159,7 @@ function sendAction(action) {
 
 function applyState(data) {
   const { videoPath, position, paused, playbackRate, serverTime } = data;
+  log("applyState", { videoPath, position, paused, playbackRate, serverTime });
   state.applyingRemote = true;
 
   if (videoPath !== state.currentVideo) {
@@ -143,6 +167,7 @@ function applyState(data) {
     if (videoPath) {
       el.videoPlayer.src = `/media/${encodeURIComponent(videoPath)}`;
       el.videoOverlay.classList.add("hidden");
+      log("applyState:loadSubtitles", videoPath);
       loadSubtitles(videoPath).then(() => {
         applyPreferredSubtitle();
         setTimeout(applyPreferredSubtitle, 300);
@@ -190,6 +215,7 @@ function updateNowPlayingLabel() {
   if (!el.nowPlayingSelect) return;
   const current = state.currentVideo || "";
   if (el.nowPlayingSelect.value !== current) {
+    log("nowPlaying:update", current);
     el.nowPlayingSelect.value = current;
   }
 }
@@ -197,11 +223,9 @@ function updateNowPlayingLabel() {
 function ensureSubtitlesLoaded() {
   if (!state.currentVideo) return;
   if (!el.subtitleSelect) return;
-  if (el.subtitleSelect.options.length > 1) {
-    if (!el.subtitleSelect.value) {
-      applyPreferredSubtitle();
-    }
-    return;
+  if (state.subtitleLoading) return;
+  if (state.subtitleLastVideo === state.currentVideo && Date.now() - state.subtitleLastLoadedAt < 4000) {
+    if (el.subtitleSelect.options.length > 1 && el.subtitleSelect.value) return;
   }
   loadSubtitles(state.currentVideo).then(() => {
     applyPreferredSubtitle();
@@ -255,16 +279,24 @@ async function loadInvites() {
 
 async function loadSubtitles(videoPath) {
   if (!el.subtitleSelect) return;
-  el.subtitleSelect.innerHTML = "";
-  const noneOpt = document.createElement("option");
-  noneOpt.value = "";
-  noneOpt.textContent = "Off";
-  el.subtitleSelect.appendChild(noneOpt);
+  if (state.subtitleLoading) return;
+  state.subtitleLoading = true;
+  const previousValue = el.subtitleSelect.value;
+  log("loadSubtitles:start", videoPath, "previous", previousValue);
 
-  if (!videoPath) return;
+  if (!videoPath) {
+    state.subtitleLoading = false;
+    return;
+  }
 
   try {
     const data = await fetchJSON(`/api/subtitles?video=${encodeURIComponent(videoPath)}`);
+    log("loadSubtitles:data", data);
+    el.subtitleSelect.innerHTML = "";
+    const noneOpt = document.createElement("option");
+    noneOpt.value = "";
+    noneOpt.textContent = "Off";
+    el.subtitleSelect.appendChild(noneOpt);
     for (const track of data.tracks || []) {
       const opt = document.createElement("option");
       opt.value = track.url;
@@ -272,6 +304,13 @@ async function loadSubtitles(videoPath) {
       el.subtitleSelect.appendChild(opt);
     }
     applyPreferredSubtitle();
+    if (previousValue) {
+      const match = Array.from(el.subtitleSelect.options).find((opt) => opt.value === previousValue);
+      if (match) {
+        el.subtitleSelect.value = previousValue;
+        setSubtitleTrack(previousValue);
+      }
+    }
     if (el.subtitleSelect.options.length === 1) {
       // Retry once if subtitles were not ready.
       setTimeout(() => {
@@ -280,9 +319,13 @@ async function loadSubtitles(videoPath) {
         });
       }, 800);
     }
-  } catch {
-    // ignore subtitle errors
+  } catch (error) {
+    log("loadSubtitles:error", error?.message || error);
   }
+  state.subtitleLoading = false;
+  state.subtitleLastLoadedAt = Date.now();
+  state.subtitleLastVideo = videoPath;
+  log("loadSubtitles:done", videoPath, "count", el.subtitleSelect.options.length);
 }
 
 function setSubtitleTrack(url) {
@@ -290,6 +333,7 @@ function setSubtitleTrack(url) {
   if (existing) existing.remove();
   if (!url) return;
 
+  log("setSubtitleTrack", url);
   const track = document.createElement("track");
   track.kind = "subtitles";
   track.label = "Subtitles";
@@ -304,6 +348,7 @@ function applyPreferredSubtitle() {
   const opts = Array.from(el.subtitleSelect.options);
   const preferred = opts.find((o) => /\beng\b|english/i.test(o.textContent || "")) || opts[1];
   if (preferred) {
+    log("applyPreferredSubtitle", preferred.textContent, preferred.value);
     el.subtitleSelect.value = preferred.value;
     setSubtitleTrack(el.subtitleSelect.value);
   }
@@ -367,6 +412,7 @@ el.fullscreenButton.addEventListener("click", () => {
 el.videoPlayer.addEventListener("play", () => {
   if (state.applyingRemote) return;
   if (Date.now() < state.ignoreEventsUntil) return;
+  log("video:play");
   sendAction("play");
 });
 
@@ -374,23 +420,27 @@ el.videoPlayer.addEventListener("pause", () => {
   if (state.applyingRemote) return;
   if (Date.now() < state.ignoreEventsUntil) return;
   if (el.videoPlayer.seeking) return;
+  log("video:pause");
   sendAction("pause");
 });
 
 el.videoPlayer.addEventListener("seeked", () => {
   if (state.applyingRemote) return;
   if (Date.now() < state.ignoreEventsUntil) return;
+  log("video:seeked", el.videoPlayer.currentTime);
   sendAction("seek");
 });
 
 el.videoPlayer.addEventListener("ratechange", () => {
   if (state.applyingRemote) return;
   if (Date.now() < state.ignoreEventsUntil) return;
+  log("video:rate", el.videoPlayer.playbackRate);
   sendAction("rate");
 });
 
 el.nowPlayingSelect.addEventListener("change", async () => {
   const videoPath = el.nowPlayingSelect.value || null;
+  log("nowPlayingSelect:change", videoPath);
   setHint(el.videoStatus, "Setting video...");
   await fetchJSON("/api/room/set-video", {
     method: "POST",
@@ -435,6 +485,7 @@ if (el.toggleInvites && el.inviteBody) {
 
 if (el.subtitleSelect) {
   el.subtitleSelect.addEventListener("change", () => {
+    log("subtitleSelect:change", el.subtitleSelect.value);
     setSubtitleTrack(el.subtitleSelect.value);
   });
 }
