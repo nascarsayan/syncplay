@@ -63,6 +63,26 @@ async function sanityCheck(filePath: string) {
   }
 }
 
+async function getAudioChannels(filePath: string) {
+  const probe = Bun.spawn([
+    "ffprobe",
+    "-v",
+    "error",
+    "-select_streams",
+    "a:0",
+    "-show_entries",
+    "stream=channels",
+    "-print_format",
+    "json",
+    filePath,
+  ]);
+  const out = await new Response(probe.stdout).text();
+  const code = await probe.exited;
+  if (code !== 0) return 0;
+  const parsed = JSON.parse(out) as { streams?: Array<{ channels?: number }> };
+  return parsed.streams?.[0]?.channels ?? 0;
+}
+
 async function convertOne(inputPath: string) {
   const dir = path.dirname(inputPath);
   const ext = path.extname(inputPath).toLowerCase();
@@ -73,9 +93,14 @@ async function convertOne(inputPath: string) {
   const outputPath = path.join(dir, `${base}.mp4`);
 
   if (await fileNewer(outputPath, inputPath)) {
-    console.log(`skip (up-to-date): ${outputPath}`);
-    await sanityCheck(outputPath);
-    return;
+    const channels = await getAudioChannels(outputPath);
+    if (channels > 2) {
+      console.log(`re-encode audio to stereo: ${outputPath}`);
+    } else {
+      console.log(`skip (up-to-date): ${outputPath}`);
+      await sanityCheck(outputPath);
+      return;
+    }
   }
 
   try {
@@ -98,6 +123,8 @@ async function convertOne(inputPath: string) {
     "copy",
     "-c:a",
     "aac",
+    "-ac",
+    "2",
     "-b:a",
     "160k",
     "-movflags",
@@ -131,6 +158,8 @@ async function convertOne(inputPath: string) {
     "23",
     "-c:a",
     "aac",
+    "-ac",
+    "2",
     "-b:a",
     "160k",
     "-movflags",
