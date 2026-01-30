@@ -38,6 +38,9 @@ const el = {
   seekBack: document.getElementById("seekBack"),
   seekForward: document.getElementById("seekForward"),
   fullscreenButton: document.getElementById("fullscreenButton"),
+  speedDown: document.getElementById("speedDown"),
+  speedReset: document.getElementById("speedReset"),
+  speedUp: document.getElementById("speedUp"),
   subtitleSelect: document.getElementById("subtitleSelect"),
   nowPlayingSelect: document.getElementById("nowPlayingSelect"),
   applyVideoButton: document.getElementById("applyVideoButton"),
@@ -361,6 +364,9 @@ function setControlsEnabled(enabled) {
   el.seekBack.disabled = !enabled;
   el.seekForward.disabled = !enabled;
   el.fullscreenButton.disabled = !enabled;
+  if (el.speedDown) el.speedDown.disabled = !enabled;
+  if (el.speedReset) el.speedReset.disabled = !enabled;
+  if (el.speedUp) el.speedUp.disabled = !enabled;
   if (el.subtitleSelect) el.subtitleSelect.disabled = !enabled;
 }
 
@@ -429,6 +435,34 @@ el.seekForward.addEventListener("click", () => {
   el.videoPlayer.currentTime = el.videoPlayer.currentTime + 10;
   sendAction("seek");
 });
+
+function clampRate(value) {
+  return Math.max(0.5, Math.min(2, Math.round(value * 10) / 10));
+}
+
+function updateRate(nextRate) {
+  const rate = clampRate(nextRate);
+  el.videoPlayer.playbackRate = rate;
+  sendAction("rate");
+}
+
+if (el.speedDown) {
+  el.speedDown.addEventListener("click", () => {
+    updateRate(el.videoPlayer.playbackRate - 0.1);
+  });
+}
+
+if (el.speedUp) {
+  el.speedUp.addEventListener("click", () => {
+    updateRate(el.videoPlayer.playbackRate + 0.1);
+  });
+}
+
+if (el.speedReset) {
+  el.speedReset.addEventListener("click", () => {
+    updateRate(1.0);
+  });
+}
 
 el.fullscreenButton.addEventListener("click", () => {
   if (el.videoPlayer.requestFullscreen) {
@@ -507,6 +541,35 @@ el.videoPlayer.addEventListener("ratechange", () => {
   if (Date.now() < state.ignoreEventsUntil) return;
   log("video:rate", el.videoPlayer.playbackRate);
   sendAction("rate");
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.repeat) return;
+  const tag = (document.activeElement?.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return;
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+  if (event.key === "ArrowLeft") {
+    el.videoPlayer.currentTime = Math.max(0, el.videoPlayer.currentTime - 10);
+    sendAction("seek");
+    return;
+  }
+  if (event.key === "ArrowRight") {
+    el.videoPlayer.currentTime = el.videoPlayer.currentTime + 10;
+    sendAction("seek");
+    return;
+  }
+  if (event.key === "[" || event.key === "_") {
+    updateRate(el.videoPlayer.playbackRate - 0.1);
+    return;
+  }
+  if (event.key === "]" || event.key === "+") {
+    updateRate(el.videoPlayer.playbackRate + 0.1);
+    return;
+  }
+  if (event.key === "0") {
+    updateRate(1.0);
+  }
 });
 
 el.nowPlayingSelect.addEventListener("change", () => {
