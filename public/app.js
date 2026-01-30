@@ -559,16 +559,32 @@ window.addEventListener("keydown", (event) => {
     sendAction("seek");
     return;
   }
-  if (event.key === "[" || event.key === "_") {
+  if (event.key === "[" || event.key === "-" || event.key === "_") {
     updateRate(el.videoPlayer.playbackRate - 0.1);
     return;
   }
-  if (event.key === "]" || event.key === "+") {
+  if (event.key === "]" || event.key === "+" || event.key === "=") {
     updateRate(el.videoPlayer.playbackRate + 0.1);
     return;
   }
   if (event.key === "0") {
     updateRate(1.0);
+    return;
+  }
+  if (event.key === " ") {
+    event.preventDefault();
+    if (el.videoPlayer.paused) {
+      el.videoPlayer.play().catch(() => {});
+    } else {
+      el.videoPlayer.pause();
+    }
+    return;
+  }
+  if (event.key.toLowerCase() === "f") {
+    event.preventDefault();
+    if (el.videoPlayer.requestFullscreen) {
+      el.videoPlayer.requestFullscreen();
+    }
   }
 });
 
