@@ -582,7 +582,9 @@ window.addEventListener("keydown", (event) => {
   }
   if (event.key.toLowerCase() === "f") {
     event.preventDefault();
-    if (el.videoPlayer.requestFullscreen) {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else if (el.videoPlayer.requestFullscreen) {
       el.videoPlayer.requestFullscreen();
     }
   }
